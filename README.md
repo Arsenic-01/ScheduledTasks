@@ -1,48 +1,106 @@
-# ⚡ Node.js Starter Function
+# Scheduled Updates Function for Appwrite
 
-A simple starter function. Edit `src/main.js` to get started and create something awesome! 🚀
+This cloud function performs full recalculation of various caches and statistics in an Appwrite project. Unlike the incremental function, it rebuilds everything from scratch to ensure accuracy.
 
-## 🧰 Usage
+---
 
-### GET /ping
+## Features
 
-- Returns a "Pong" message.
+* **Links Cache Update**: Aggregates all uploaders from YouTube and Form collections.
+* **Uploader Cache Update**: Builds global and subject-wise uploader lists from Notes collection.
+* **Teacher Stats Recalculation**: Recomputes contribution counts for all teachers across notes, forms, and YouTube links.
+* Designed to be run periodically (e.g., daily) via scheduled triggers.
 
-**Response**
+---
 
-Sample `200` Response:
+## Environment Variables
 
-```text
-Pong
+| Key                                 | Description                          |
+| ----------------------------------- | ------------------------------------ |
+| `APPWRITE_ENDPOINT`                 | Your Appwrite endpoint               |
+| `APPWRITE_PROJECT`                  | Project ID                           |
+| `APPWRITE_API_KEY`                  | API key with database access         |
+| `APPWRITE_DATABASE_ID`              | Database containing collections      |
+| `APPWRITE_NOTE_COLLECTION_ID`       | Collection ID for notes              |
+| `APPWRITE_FORM_COLLECTION_ID`       | Collection ID for forms              |
+| `APPWRITE_YOUTUBE_COLLECTION_ID`    | Collection ID for YouTube links      |
+| `CACHE_COLLECTION_ID`               | Collection ID for cache documents    |
+| `LINKS_UPLOADERS_CACHE_DOCUMENT_ID` | Document ID for links uploader cache |
+| `UPLOADERS_CACHE_DOCUMENT_ID`       | Document ID for uploader cache       |
+| `STATS_COLLECTION_ID`               | Collection ID for teacher statistics |
+| `STATS_DOCUMENT_ID`                 | Document ID for stats data           |
+
+---
+
+## Event Trigger
+
+This function is intended for scheduled execution rather than real-time events. Example:
+
+* **Cron Schedule:** `0 0 * * *` (Runs every midnight)
+* Set trigger type to **Schedule** in Appwrite.
+
+---
+
+## Function Workflow
+
+1. **Fetch All Documents**
+
+   * Uses pagination to avoid size limits.
+   * Pulls required fields only using `Query.select`.
+
+2. **Update Links Cache**
+
+   * Combines uploader names from YouTube and Forms collections.
+
+3. **Update Uploader Cache**
+
+   * Builds `all` uploader list and subject-wise uploader mappings from Notes collection.
+
+4. **Update Teacher Stats**
+
+   * Counts contributions per teacher for each content type.
+   * Sorts teachers by total contributions.
+
+---
+
+## Local Development
+
+```bash
+npm install
+npx functions-emulator start
 ```
 
-### GET, POST, PUT, PATCH, DELETE /
+Test manually:
 
-- Returns a "Learn More" JSON response.
-
-**Response**
-
-Sample `200` Response:
-
-```json
-{
-  "motto": "Build like a team of hundreds_",
-  "learn": "https://appwrite.io/docs",
-  "connect": "https://appwrite.io/discord",
-  "getInspired": "https://builtwith.appwrite.io"
-}
+```bash
+curl -X POST http://localhost:3000 -H "Content-Type: application/json" -d '{}'
 ```
 
-## ⚙️ Configuration
+---
 
-| Setting           | Value         |
-| ----------------- | ------------- |
-| Runtime           | Node (18.0)   |
-| Entrypoint        | `src/main.js` |
-| Build Commands    | `npm install` |
-| Permissions       | `any`         |
-| Timeout (Seconds) | 15            |
+## Deployment
 
-## 🔒 Environment Variables
+1. Zip the function code:
 
-No environment variables required.
+```bash
+zip -r function.zip .
+```
+
+2. Upload to Appwrite Console → Functions → Upload Function.
+3. Set runtime to **Node.js 18+**.
+4. Configure environment variables.
+5. Attach schedule trigger.
+
+---
+
+## Error Handling
+
+* Uses `Promise.all` to run tasks concurrently for speed.
+* Logs detailed errors in Appwrite function logs.
+* Creates missing documents if not found (upsert behavior).
+
+---
+
+## License
+
+MIT
